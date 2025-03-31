@@ -1,7 +1,8 @@
 #!/bin/bash
-# Script mestre per executar tots els tests
-
 echo "=== EXECUCIÓ AUTOMATITZADA DELS TESTS DE TOT EL PROJECTE ==="
+
+echo "Instal·lant dependencies"
+pip install -r requirements.txt
 
 echo "Executant XMLRPC..."
 ./src/run_xmlrpc.sh

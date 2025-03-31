@@ -1,12 +1,29 @@
 import pika
 import uuid
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def connect_rabbitmq(retries=5, delay=2):
+    """
+    Intenta connectar a RabbitMQ per un nombre determinat d'intents.
+    Si falla, espera 'delay' segons entre intents. Si no es pot connectar,
+    llença una excepció.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+            logging.info("Connexió a RabbitMQ establerta en l'intent %d", attempt)
+            return connection
+        except pika.exceptions.AMQPConnectionError as e:
+            logging.error("Error de connexió a RabbitMQ en l'intent %d: %s", attempt, e)
+            time.sleep(delay)
+    raise Exception("No es pot connectar a RabbitMQ després de %d intents" % retries)
+
 class InsultServiceRpcClient:
     def __init__(self):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.connection = connect_rabbitmq()
         self.channel = self.connection.channel()
         result = self.channel.queue_declare(queue='', exclusive=True)
         self.callback_queue = result.method.queue
@@ -37,10 +54,15 @@ class InsultServiceRpcClient:
         return self.response
 
 def main():
-    rpc_client = InsultServiceRpcClient()
+    try:
+        rpc_client = InsultServiceRpcClient()
+    except Exception as e:
+        logging.error("No s'ha pogut establir la connexió a RabbitMQ: %s", e)
+        return
+
     res1 = rpc_client.call("add_insult:insult1")
     res2 = rpc_client.call("add_insult:insult2")
-    res3 = rpc_client.call("add_insult:insult1")
+    res3 = rpc_client.call("add_insult:insult1")  # Aquest ja existeix
     logging.info("Resultats d'afegir insults: %s, %s, %s", res1, res2, res3)
     insults = rpc_client.call("get_insults")
     logging.info("Llista d'insults: %s", insults)
