@@ -1,27 +1,45 @@
 #!/bin/bash
+
 echo "=== REDIS TESTS ==="
 
-# Comprovem si Redis està instal·lat i actiu
-if ! command -v redis-cli >/dev/null 2>&1; then
-  echo "[ERROR] Redis no està instal·lat. Instal·la'l abans d'executar aquest script."
+mkdir -p logs
+
+# Verificar que Redis està actiu amb Python
+echo "[INFO] Comprovant si Redis respon al port 6379..."
+python -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('localhost', 6379))" 2>/dev/null
+
+if [ $? -ne 0 ]; then
+  echo "[ERROR] Redis no està en execució o no està al port 6379."
+  echo "Assegura't que 'redis-server' s'ha iniciat manualment en una altra terminal."
   exit 1
 fi
 
-if ! redis-cli ping | grep -q PONG; then
-  echo "[ERROR] Redis no està actiu. Inicia el servei abans de continuar."
-  exit 1
-fi
-
-# Execució de serveis i clients
+# InsultService
+echo "[Redis] Iniciant servei InsultService..."
 python src/redis/insult_service_redis.py > logs/redis_service.log 2>&1 &
-SERVICE_PID=$!
+PID_SERVICE=$!
 sleep 1
+
+echo "[Redis] Executant client bàsic d'InsultService..."
 python src/redis/client_insult_service_redis.py > logs/redis_client.log 2>&1
+
+echo "[Redis] Executant stress test d’InsultService..."
+python src/redis/stress_test_insult_service_redis.py > logs/redis_stress_service.log 2>&1
+
+# InsultFilter
+echo "[Redis] Iniciant servei InsultFilter..."
 python src/redis/insult_filter_redis.py > logs/redis_filter_service.log 2>&1 &
-FILTER_PID=$!
+PID_FILTER=$!
 sleep 1
+
+echo "[Redis] Executant client bàsic d'InsultFilter..."
 python src/redis/client_insult_filter_redis.py > logs/redis_filter_client.log 2>&1
 
-kill $SERVICE_PID 2>/dev/null
-kill $FILTER_PID 2>/dev/null
-echo "[Redis] Tests completats."
+echo "[Redis] Executant stress test d’InsultFilter..."
+python src/redis/stress_test_insult_filter_redis.py > logs/redis_stress_filter_service.log 2>&1
+
+# Finalitzar serveis
+echo "[Redis] Aturant serveis..."
+kill $PID_SERVICE $PID_FILTER 2>/dev/null
+
+echo "[Redis] Tests completats. Logs disponibles a la carpeta logs/"
