@@ -1,19 +1,21 @@
 #!/bin/bash
 echo "=== EXECUCIÓ AUTOMATITZADA DELS TESTS DE TOT EL PROJECTE ==="
 
-echo "Instal·lant dependencies"
+echo "Instal·lant dependències..."
 pip install -r requirements.txt
 
+mkdir -p logs
+
 echo "Executant XMLRPC..."
-./src/run_xmlrpc.sh
+bash src/run_xmlrpc.sh
 
 echo "Executant Pyro..."
-./src/run_pyro.sh
+bash src/run_pyro.sh
 
 echo "Executant Redis..."
-./src/run_redis.sh
+bash src/run_redis.sh
 
 echo "Executant RabbitMQ..."
-./src/run_rabbitmq.sh
+bash src/run_rabbitmq.sh
 
 echo "=== TOT EXECUTAT ==="
